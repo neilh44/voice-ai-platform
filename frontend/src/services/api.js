@@ -83,14 +83,20 @@ export const deleteKnowledgeBase = async (knowledgeBaseId) => {
  * @param {string} callSid - Call SID 
  * @returns {Promise<Array>} - Array of recording objects
  */
+// api.js - Update the getCallRecordings function
 export const getCallRecordings = async (userId, callSid) => {
   try {
-    const response = await api.get(`/call/${userId}/${callSid}/recordings`);
+    const response = await axios.get(`${API_BASE_URL}/call/${userId}/${callSid}/recordings`);
     return response.data;
   } catch (error) {
-    console.error('Error fetching call recordings:', error);
+    console.error("Error fetching call recordings:", error);
     throw error;
   }
+};
+
+// Add this function to get the actual audio URL
+export const getRecordingAudioUrl = (recordingSid) => {
+  return `${API_BASE_URL}/recordings/${recordingSid}`;
 };
 
 /**
@@ -106,6 +112,15 @@ export const getCallTranscript = async (callSid) => {
     console.error('Error fetching call transcript:', error);
     throw error;
   }
+};
+
+/**
+ * Get recording audio via the secure proxy endpoint
+ * @param {string} recordingSid - Recording SID
+ * @returns {string} - URL to the recording audio
+ */
+export const getRecordingAudio = (recordingSid) => {
+  return `${API_BASE_URL}/recordings/${recordingSid}`;
 };
 
 /**

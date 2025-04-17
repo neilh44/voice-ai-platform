@@ -73,6 +73,7 @@ class TwilioService:
             gather = Gather(
                 input='speech',
                 action='/api/webhook/voice',  # Should match your Flask route
+                status_callback="https://7873-2405-201-201c-1801-a585-f7f0-30f3-5049.ngrok-free.app/api/webhook/recording-status",
                 method='POST',
                 speechTimeout=5,  # Use a fixed value instead of 'auto'
                 speechModel='phone_call',

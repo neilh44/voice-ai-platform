@@ -1,9 +1,14 @@
-# twilio_routes.py - Updated to match the existing CallLogs component format
-from flask import Blueprint, jsonify, current_app, request
+# twilio_routes.py - Complete implementation with recording access
+from flask import Blueprint, jsonify, current_app, request, Response
 from twilio.rest import Client
 import os
 from datetime import datetime, timedelta
 import logging
+import requests
+from requests.auth import HTTPBasicAuth
+import base64
+from werkzeug.exceptions import BadRequest
+from flask import stream_with_context
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -27,14 +32,23 @@ def get_twilio_client():
         logger.error(f"Error creating Twilio client: {str(e)}")
         return None
 
+def get_twilio_credentials():
+    """Get Twilio account SID and auth token."""
+    account_sid = os.environ.get('TWILIO_ACCOUNT_SID')
+    auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
+    return account_sid, auth_token
+
 # Route to replace the dashboard/summary endpoint
-@twilio_bp.route('/dashboard/summary/<user_id>', methods=['GET'])
-def get_dashboard_summary(user_id):
+@twilio_bp.route('/dashboard/summary', methods=['GET'])
+def get_dashboard_summary():
     """
     Get dashboard summary using Twilio data instead of database.
     This replaces the original endpoint that was using database queries.
     """
     try:
+        # Get user_id from query params
+        user_id = request.args.get('user_id')
+        
         # Get Twilio client
         client = get_twilio_client()
         
@@ -79,8 +93,8 @@ def get_dashboard_summary(user_id):
             for call in recent_calls:
                 formatted_recent_calls.append({
                     'id': call.sid,
-                    'fromNumber': call.from_,
-                    'toNumber': call.to,
+                    'fromNumber': call.from_formatted,  # Fixed: Using from_formatted instead of from_
+                    'toNumber': call.to_formatted,      # Fixed: Using to_formatted instead of to
                     'duration': int(call.duration) if call.duration else 0,
                     'startedAt': call.start_time.isoformat() if call.start_time else None,
                     'outcome': call.status
@@ -146,7 +160,7 @@ def get_dashboard_summary(user_id):
         
     except Exception as e:
         logger.error(f"Error getting dashboard summary: {str(e)}")
-        return get_mock_dashboard_data(user_id)
+        return get_mock_dashboard_data(user_id if 'user_id' in locals() else None)
 
 def get_mock_dashboard_data(user_id):
     """Generate mock dashboard data when Twilio is not available."""
@@ -197,7 +211,32 @@ def get_mock_dashboard_data(user_id):
     
     return jsonify(mock_data), 200
 
-# CRITICAL: Call logs endpoint updated to match existing format
+
+@twilio_bp.route('/webhook/recording-status', methods=['POST'])
+def recording_status_webhook():
+    """Handle recording status callback from Twilio"""
+    try:
+        # Extract data from the request
+        call_sid = request.form.get('CallSid')
+        recording_sid = request.form.get('RecordingSid')
+        recording_url = request.form.get('RecordingUrl')
+        recording_status = request.form.get('RecordingStatus')
+        
+        logger.info(f"Recording status update: {recording_status} for call {call_sid}")
+        
+        # Store the recording info or update status as needed
+        if recording_status == 'completed':
+            # This is when the recording is ready to be accessed
+            logger.info(f"Recording {recording_sid} for call {call_sid} is now ready")
+        
+        # Always return a success response to Twilio
+        return '', 204
+        
+    except Exception as e:
+        logger.error(f"Error handling recording status: {str(e)}")
+        return '', 500
+    
+# Updated call logs endpoint that uses query parameters
 @twilio_bp.route('/call-logs/<user_id>', methods=['GET'])
 def get_call_logs(user_id):
     """Get call logs from Twilio."""
@@ -248,7 +287,11 @@ def get_call_logs(user_id):
                 continue
                 
             # Apply phone number filter if provided
-            if phone_number and phone_number not in call.from_ and phone_number not in call.to:
+            # Fixed: Using from_formatted and to_formatted instead of from_ and to
+            if phone_number and (
+                (hasattr(call, 'from_formatted') and phone_number not in call.from_formatted) and 
+                (hasattr(call, 'to_formatted') and phone_number not in call.to_formatted)
+            ):
                 continue
                 
             # Check for recordings
@@ -259,12 +302,13 @@ def get_call_logs(user_id):
             except Exception as e:
                 logger.error(f"Error checking recordings for call {call.sid}: {str(e)}")
             
+            # Safely access attributes with error handling
             # Create formatted call object that matches your component's expectations
             formatted_call = {
                 'id': call.sid,
                 'callSid': call.sid,
-                'fromNumber': call.from_,
-                'toNumber': call.to,
+                'fromNumber': call.from_formatted if hasattr(call, 'from_formatted') else call.from_ if hasattr(call, 'from_') else "Unknown",
+                'toNumber': call.to_formatted if hasattr(call, 'to_formatted') else call.to if hasattr(call, 'to') else "Unknown",
                 'duration': int(call.duration) if call.duration else 0,
                 'status': call.status,
                 'direction': call.direction,
@@ -273,7 +317,7 @@ def get_call_logs(user_id):
                 'endedAt': call.end_time.isoformat() if call.end_time else None,
                 'recordingCount': len(recordings) if 'recordings' in locals() else 0,
                 'hasRecordings': has_recordings,
-                'hasTranscript': False  # We don't have actual transcript data from Twilio
+                'hasTranscript': has_recordings  # Assuming if there are recordings, transcripts might be available
             }
             formatted_calls.append(formatted_call)
         
@@ -338,14 +382,50 @@ def get_mock_call_logs():
         }
     ]
 
-@twilio_bp.route('/call/<user_id>/<call_sid>/recordings', methods=['GET'])
-def get_call_recordings(user_id, call_sid):
+
+@twilio_bp.route('/call/<user_id>/<call_sid>/recordings', methods=['GET', 'OPTIONS'])
+def get_user_call_recordings(user_id, call_sid):
+    """Get recordings for a specific call with user context."""
+    try:
+        if request.method == 'OPTIONS':
+            # Handle CORS preflight request
+            resp = jsonify(success=True)
+            resp.headers.add('Access-Control-Allow-Origin', '*')
+            resp.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+            resp.headers.add('Access-Control-Allow-Methods', 'GET,OPTIONS')
+            return resp
+            
+        # Process the actual request
+        return get_call_recordings(call_sid)
+    except Exception as e:
+        logger.error(f"Error in get_user_call_recordings: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+# New route to match frontend request pattern: /api/call/:callId/transcript
+@twilio_bp.route('/call/<call_sid>/transcript', methods=['GET', 'OPTIONS'])
+def get_call_transcript_direct(call_sid):
+    """Get transcript for a specific call - direct access endpoint."""
+    if request.method == 'OPTIONS':
+        # Handle CORS preflight request
+        resp = jsonify(success=True)
+        resp.headers.add('Access-Control-Allow-Origin', '*')
+        resp.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+        resp.headers.add('Access-Control-Allow-Methods', 'GET,OPTIONS')
+        return resp
+        
+    # Forward to the existing implementation
+    return get_call_transcript(call_sid)
+
+# Updated endpoint for call recordings
+@twilio_bp.route('/call-recordings/<call_sid>', methods=['GET'])
+def get_call_recordings(call_sid):
     """Get recordings for a specific call."""
     try:
         # Get Twilio client
         client = get_twilio_client()
+        account_sid, _ = get_twilio_credentials()
         
-        if not client:
+        if not client or not account_sid:
             logger.warning("Twilio client not available. Using mock recordings.")
             return jsonify(get_mock_recordings(call_sid)), 200
         
@@ -355,14 +435,45 @@ def get_call_recordings(user_id, call_sid):
         # Format recording data to match your component's expectations
         formatted_recordings = []
         for recording in recordings:
+            # Use our proxy endpoint instead of direct Twilio URL
+            recording_url = f"/api/recordings/{recording.sid}"
+            
+            # Check if there's a transcription for this recording
+            transcription_text = None
+            try:
+                # Get all transcriptions without filtering parameters
+                all_transcriptions = client.transcriptions.list()
+                
+                # Filter the list manually to find ones for this recording
+                recording_transcriptions = [t for t in all_transcriptions 
+                                           if hasattr(t, 'recording_sid') and t.recording_sid == recording.sid]
+                
+                if recording_transcriptions and len(recording_transcriptions) > 0:
+                    # Get the transcription text via API
+                    transcription = recording_transcriptions[0]
+                    transcription_url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Transcriptions/{transcription.sid}.txt"
+                    
+                    # Make authenticated request to get transcription text
+                    auth_token = os.environ.get('TWILIO_AUTH_TOKEN')
+                    response = requests.get(
+                        transcription_url, 
+                        auth=HTTPBasicAuth(account_sid, auth_token)
+                    )
+                    
+                    if response.status_code == 200:
+                        transcription_text = response.text
+            except Exception as e:
+                logger.error(f"Error fetching transcription for recording {recording.sid}: {str(e)}")
+            
             formatted_recordings.append({
                 'recording_sid': recording.sid,
                 'id': recording.sid,
+                'call_sid': recording.call_sid,
                 'duration': int(recording.duration) if recording.duration else 0,
                 'channels': recording.channels,
                 'date_created': recording.date_created.isoformat() if recording.date_created else None,
-                'recording_url': f"https://api.twilio.com/2010-04-01/Accounts/{client.account_sid}/Recordings/{recording.sid}.mp3",
-                'transcription': None  # Twilio doesn't provide transcription by default
+                'recording_url': recording_url,  # Use our proxy endpoint
+                'transcription': transcription_text
             })
         
         return jsonify(formatted_recordings), 200
@@ -370,6 +481,8 @@ def get_call_recordings(user_id, call_sid):
     except Exception as e:
         logger.error(f"Error fetching call recordings: {str(e)}")
         return jsonify(get_mock_recordings(call_sid)), 200
+    
+    
 
 def get_mock_recordings(call_sid):
     """Generate mock recordings for a call."""
@@ -379,58 +492,214 @@ def get_mock_recordings(call_sid):
         {
             'recording_sid': f"RE{call_sid[2:]}1",
             'id': f"RE{call_sid[2:]}1",
+            'call_sid': call_sid,
             'duration': 124,
             'channels': 1,
             'date_created': (now - timedelta(hours=2)).isoformat(),
-            'recording_url': f"https://example.com/recording-{call_sid}-1.mp3",
+            'recording_url': f"/api/recordings/RE{call_sid[2:]}1",  # Use our proxy endpoint
             'transcription': "This is a mock transcription of the recording. Hello, how can I help you today? I'd like to schedule an appointment please."
         }
     ]
 
-@twilio_bp.route('/call/<call_sid>/transcript', methods=['GET'])
+# Critical endpoint for accessing recordings - make sure this works correctly
+@twilio_bp.route('/recordings/<recording_sid>', methods=['GET'])
+def get_recording(recording_sid):
+    """Proxy for Twilio recordings to avoid exposing auth to frontend"""
+    try:
+        # Initialize Twilio client
+        account_sid, auth_token = get_twilio_credentials()
+        
+        if not account_sid or not auth_token:
+            logger.error("Twilio credentials not found")
+            return "Twilio not configured", 503
+        
+        # Stream the recording from Twilio
+        recording_url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Recordings/{recording_sid}.mp3"
+        
+        # Make request to Twilio with auth
+        response = requests.get(
+            recording_url, 
+            auth=(account_sid, auth_token),
+            stream=True
+        )
+        
+        if not response.ok:
+            logger.error(f"Error fetching recording {recording_sid}: {response.status_code}")
+            return f"Error fetching recording: {response.status_code}", response.status_code
+        
+        # Stream the response to the client
+        def generate():
+            for chunk in response.iter_content(chunk_size=4096):
+                yield chunk
+                
+        return Response(
+            stream_with_context(generate()),
+            content_type='audio/mpeg',
+            headers={
+                'Content-Disposition': f'attachment; filename=recording-{recording_sid}.mp3'
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Error accessing recording {recording_sid}: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+# Keep the existing recording endpoint for compatibility
+@twilio_bp.route('/recording/<recording_sid>', methods=['GET'])
+def get_recording_audio(recording_sid):
+    """
+    Proxy endpoint to securely access Twilio recording audio files.
+    This prevents exposing your Twilio credentials in the frontend.
+    """
+    try:
+        account_sid, auth_token = get_twilio_credentials()
+        
+        if not account_sid or not auth_token:
+            logger.error("Twilio credentials not found")
+            return "Twilio not configured", 503
+        
+        # Construct the URL to the recording
+        recording_url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Recordings/{recording_sid}.mp3"
+        
+        # Request the recording from Twilio with authentication
+        recording_response = requests.get(
+            recording_url,
+            auth=HTTPBasicAuth(account_sid, auth_token),
+            stream=True
+        )
+        
+        if not recording_response.ok:
+            logger.error(f"Error fetching recording {recording_sid}: {recording_response.status_code}")
+            return f"Error fetching recording: {recording_response.status_code}", recording_response.status_code
+            
+        # Stream the response back to the client
+        return Response(
+            stream_with_context(recording_response.iter_content(chunk_size=1024)),
+            content_type=recording_response.headers.get('Content-Type', 'audio/mpeg'),
+            headers={
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache',
+                'Expires': '0'
+            }
+        )
+        
+    except Exception as e:
+        logger.error(f"Error accessing recording {recording_sid}: {str(e)}")
+        return f"Error accessing recording: {str(e)}", 500
+
+
+@twilio_bp.route('/call-transcript/<call_sid>', methods=['GET'])
 def get_call_transcript(call_sid):
     """
     Get transcript for a specific call.
-    
-    Note: This is a mock implementation since actual transcripts would require 
-    integration with a transcription service like Deepgram.
+    Combines all recording transcriptions for a complete transcript.
     """
     try:
-        # This would normally fetch the transcript from your database or transcription service
-        # For now, return mock data
-        mock_transcript = {
-            'callSid': call_sid,
-            'full_transcript': "Hello, this is a mock transcript for demonstration purposes. This represents what a full transcript would look like if you had integrated with a transcription service like Deepgram.",
-            'transcript_parts': [
-                {
-                    'speaker': 'ai',
-                    'text': "Hello, how can I help you today?",
-                    'timestamp': (datetime.now() - timedelta(minutes=5)).isoformat()
-                },
-                {
-                    'speaker': 'caller',
-                    'text': "Hi, I'd like to schedule an appointment.",
-                    'timestamp': (datetime.now() - timedelta(minutes=4, seconds=30)).isoformat()
-                },
-                {
-                    'speaker': 'ai',
-                    'text': "Sure, I can help you with that. What day works best for you?",
-                    'timestamp': (datetime.now() - timedelta(minutes=4)).isoformat()
-                },
-                {
-                    'speaker': 'caller',
-                    'text': "How about next Tuesday afternoon?",
-                    'timestamp': (datetime.now() - timedelta(minutes=3, seconds=30)).isoformat()
-                }
-            ]
-        }
+        # Get Twilio client
+        client = get_twilio_client()
+        account_sid, auth_token = get_twilio_credentials()
         
-        return jsonify(mock_transcript), 200
+        if not client or not account_sid or not auth_token:
+            logger.warning("Twilio client not available. Using mock transcript.")
+            return jsonify(get_mock_transcript(call_sid)), 200
+        
+        # Get recordings for this call
+        recordings = client.recordings.list(call_sid=call_sid)
+        
+        if not recordings:
+            return jsonify({
+                'callSid': call_sid,
+                'full_transcript': None,
+                'transcript_parts': []
+            }), 200
+        
+        # Get transcriptions for all recordings
+        full_transcript = ""
+        transcript_parts = []
+        
+        for recording in recordings:
+            try:
+                # Get all transcriptions
+                all_transcriptions = client.transcriptions.list()
+                
+                # Filter for transcriptions related to this recording
+                recording_transcriptions = [t for t in all_transcriptions 
+                                           if hasattr(t, 'recording_sid') and t.recording_sid == recording.sid]
+                
+                for transcription in recording_transcriptions:
+                    # Get the transcription text
+                    transcription_url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Transcriptions/{transcription.sid}.txt"
+                    
+                    # Make authenticated request to get transcription text
+                    response = requests.get(
+                        transcription_url, 
+                        auth=HTTPBasicAuth(account_sid, auth_token)
+                    )
+                    
+                    if response.status_code == 200:
+                        transcript_text = response.text
+                        
+                        # Add to full transcript
+                        full_transcript += transcript_text + " "
+                        
+                        # Add as a segment
+                        transcript_parts.append({
+                            'text': transcript_text,
+                            'timestamp': transcription.date_created.isoformat() if transcription.date_created else datetime.now().isoformat(),
+                            'speaker': 'unknown'  # Twilio doesn't provide speaker diarization
+                        })
+            except Exception as e:
+                logger.error(f"Error processing transcription for recording {recording.sid}: {str(e)}")
+                continue
+        
+        # If we couldn't get any transcripts, return empty response
+        if not transcript_parts:
+            logger.info(f"No transcriptions found for call {call_sid}")
+            return jsonify({
+                'callSid': call_sid,
+                'full_transcript': None,
+                'transcript_parts': []
+            }), 200
+        
+        # Return in format expected by frontend
+        return jsonify({
+            'callSid': call_sid,
+            'full_transcript': full_transcript.strip() if full_transcript else None,
+            'transcript_parts': transcript_parts
+        }), 200
         
     except Exception as e:
         logger.error(f"Error fetching call transcript: {str(e)}")
-        return jsonify({
-            'callSid': call_sid,
-            'full_transcript': "",
-            'transcript_parts': []
-        }), 200  # Return empty transcript to avoid frontend errors
+        return jsonify(get_mock_transcript(call_sid)), 200
+   
+
+def get_mock_transcript(call_sid):
+    """Generate mock transcript for a call."""
+    now = datetime.now()
+    
+    return {
+        'callSid': call_sid,
+        'full_transcript': "Hello, this is a mock transcript for demonstration purposes. This represents what a full transcript would look like if you had integrated with a transcription service like Deepgram.",
+        'transcript_parts': [
+            {
+                'speaker': 'ai',
+                'text': "Hello, how can I help you today?",
+                'timestamp': (now - timedelta(minutes=5)).isoformat()
+            },
+            {
+                'speaker': 'caller',
+                'text': "Hi, I'd like to schedule an appointment.",
+                'timestamp': (now - timedelta(minutes=4, seconds=30)).isoformat()
+            },
+            {
+                'speaker': 'ai',
+                'text': "Sure, I can help you with that. What day works best for you?",
+                'timestamp': (now - timedelta(minutes=4)).isoformat()
+            },
+            {
+                'speaker': 'caller',
+                'text': "How about next Tuesday afternoon?",
+                'timestamp': (now - timedelta(minutes=3, seconds=30)).isoformat()
+            }
+        ]
+    }

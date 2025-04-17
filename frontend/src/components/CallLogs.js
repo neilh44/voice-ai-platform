@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Box,
   Card,
@@ -54,6 +54,7 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { format } from 'date-fns';
 import { getCallLogs, getCallRecordings, getCallTranscript } from '../services/api';
 
+
 const CallLogs = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -67,8 +68,9 @@ const CallLogs = () => {
   const [loadingTranscript, setLoadingTranscript] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
-  const [audioRefs, setAudioRefs] = useState({});
-  
+  const audioRefsMap = useRef({});
+
+
   // Pagination
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -178,17 +180,19 @@ const CallLogs = () => {
     }, 100);
   };
 
+
   const handleCloseDialog = () => {
     setDialogOpen(false);
     setCurrentlyPlaying(null);
     
     // Stop all audio playback when closing dialog
-    Object.values(audioRefs).forEach(audio => {
+    Object.values(audioRefsMap.current).forEach(audio => {
       if (audio && !audio.paused) {
         audio.pause();
       }
     });
   };
+   
 
   const handleTabChange = (event, newValue) => {
     setActiveTab(newValue);
@@ -197,23 +201,23 @@ const CallLogs = () => {
   const togglePlayPause = (recordingSid) => {
     if (currentlyPlaying === recordingSid) {
       // Currently playing this recording, pause it
-      if (audioRefs[recordingSid] && !audioRefs[recordingSid].paused) {
-        audioRefs[recordingSid].pause();
+      if (audioRefsMap.current[recordingSid] && !audioRefsMap.current[recordingSid].paused) {
+        audioRefsMap.current[recordingSid].pause();
         setCurrentlyPlaying(null);
-      } else if (audioRefs[recordingSid]) {
+      } else if (audioRefsMap.current[recordingSid]) {
         // It's paused, resume it
-        audioRefs[recordingSid].play();
+        audioRefsMap.current[recordingSid].play();
       }
     } else {
       // Playing a different recording
       // First, pause any currently playing audio
-      if (currentlyPlaying && audioRefs[currentlyPlaying] && !audioRefs[currentlyPlaying].paused) {
-        audioRefs[currentlyPlaying].pause();
+      if (currentlyPlaying && audioRefsMap.current[currentlyPlaying] && !audioRefsMap.current[currentlyPlaying].paused) {
+        audioRefsMap.current[currentlyPlaying].pause();
       }
       
       // Now play the new recording
-      if (audioRefs[recordingSid]) {
-        audioRefs[recordingSid].play();
+      if (audioRefsMap.current[recordingSid]) {
+        audioRefsMap.current[recordingSid].play();
         setCurrentlyPlaying(recordingSid);
       }
     }
@@ -571,18 +575,15 @@ const CallLogs = () => {
                           <AccordionDetails>
                             <Box>
                               <audio 
-                                src={recording.recording_url}
-                                ref={(element) => {
-                                  if (element) {
-                                    setAudioRefs(prev => ({
-                                      ...prev,
-                                      [recording.recording_sid]: element
-                                    }));
-                                    element.addEventListener('ended', () => handleAudioEnded(recording.recording_sid));
-                                  }
-                                }}
-                                style={{ display: 'none' }}
-                              />
+                                  src={recording.recording_url}
+                                  ref={(element) => {
+                                    if (element) {
+                                      audioRefsMap.current[recording.recording_sid] = element;
+                                      element.addEventListener('ended', () => handleAudioEnded(recording.recording_sid));
+                                    }
+                                  }}
+                                  style={{ display: 'none' }}
+                                />
                               
                               <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                                 <IconButton 
