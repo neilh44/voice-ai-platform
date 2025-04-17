@@ -3,6 +3,7 @@ from twilio.rest import Client
 import os
 import json
 import sqlite3
+import logging
 
 class TwilioService:
     def __init__(self):
@@ -29,12 +30,13 @@ class TwilioService:
         # Initialize Twilio client with user's credentials
         client = self.get_client(twilio_config.get('accountSid'), twilio_config.get('authToken'))
         
-        # Make the outbound call
+        # Make the outbound call with recording enabled
         call = client.calls.create(
             url=callback_url,
             to=to_number,
             from_=twilio_config.get('phoneNumber'),
-            status_callback=callback_url.replace('outbound-call', 'call/status')
+            status_callback=callback_url.replace('outbound-call', 'call/status'),
+            record=True  # Enable recording for the entire call
         )
         
         return call.sid
@@ -58,9 +60,8 @@ class TwilioService:
         # Generate the TwiML response
         return self.generate_twiml_response(greeting)
     
-    
     def generate_twiml_response(self, message, gather_speech=True):
-        """Generate TwiML response for Twilio"""
+        """Generate TwiML response for Twilio with transcription enabled"""
         response = VoiceResponse()
         
         # Add the spoken message
@@ -73,11 +74,22 @@ class TwilioService:
                 input='speech',
                 action='/api/webhook/voice',  # Should match your Flask route
                 method='POST',
-                speechTimeout='auto',
+                speechTimeout=5,  # Use a fixed value instead of 'auto'
                 speechModel='phone_call',
                 enhanced=True
             )
             response.append(gather)
+            
+            # Add recording with transcription enabled
+            # This will record what happens after the gather completes or times out
+            response.record(
+                action='/api/webhook/recording-status',  # Webhook for recording status
+                transcribe=True,  # Enable transcription
+                transcribeCallback='/api/webhook/transcription',  # Webhook for transcription results
+                timeout=5,
+                playBeep=False,
+                maxLength=300  # Maximum recording length in seconds (5 minutes)
+            )
             
             # If no input is received after gather completes, say goodbye and hang up
             response.say("I didn't receive any input. Goodbye.")
@@ -129,3 +141,49 @@ class TwilioService:
         except Exception as e:
             print(f"Error sending SMS: {e}")
             return False
+    
+    def get_call_recordings(self, user_id, call_sid):
+        """Get recordings for a specific call"""
+        # Get the user's Twilio configuration
+        twilio_config = self.get_user_twilio_config(user_id)
+        
+        if not twilio_config:
+            return []
+            
+        # Initialize the Twilio client
+        client = self.get_client(twilio_config.get('accountSid'), twilio_config.get('authToken'))
+        
+        try:
+            # Fetch recordings for the call
+            recordings = client.recordings.list(call_sid=call_sid)
+            
+            # Format the recordings data
+            formatted_recordings = []
+            for recording in recordings:
+                # Get the transcription if available
+                transcriptions = client.transcriptions.list(recording_sid=recording.sid)
+                transcription_text = ""
+                
+                if transcriptions:
+                    # Get the most recent transcription
+                    transcription = transcriptions[0]
+                    # Fetch the full transcription text
+                    transcription_obj = client.transcriptions(transcription.sid).fetch()
+                    transcription_text = transcription_obj.transcription_text
+                
+                # Format the recording URL
+                recording_url = f"https://api.twilio.com/2010-04-01/Accounts/{twilio_config.get('accountSid')}/Recordings/{recording.sid}.mp3"
+                
+                formatted_recordings.append({
+                    'recording_sid': recording.sid,
+                    'duration': recording.duration,
+                    'recording_url': recording_url,
+                    'date_created': str(recording.date_created),
+                    'transcription': transcription_text
+                })
+                
+            return formatted_recordings
+            
+        except Exception as e:
+            logging.error(f"Error fetching recordings: {e}")
+            return []

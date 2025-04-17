@@ -30,7 +30,8 @@ import {
   CallReceived as CallReceivedIcon,
   TrendingUp as TrendingUpIcon,
   CloudUpload as UploadIcon,
-  BarChart as ChartIcon
+  BarChart as ChartIcon,
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { getSystemSummary } from '../services/api';
 
@@ -46,26 +47,36 @@ const Dashboard = () => {
     knowledgeBaseCount: 0,
     scriptCount: 0,
     recentCalls: [],
-    recentAppointments: []
+    recentAppointments: [],
+    twilioConfigured: false,
+    llmConfigured: false,
+    deepgramConfigured: false
   });
   
   const [userId, setUserId] = useState(() => localStorage.getItem('user_id') || '');
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (!userId) return;
     fetchSummary();
-  }, [userId]);
+  }, [userId, retryCount]);
 
   const fetchSummary = async () => {
     setLoading(true);
     try {
       const data = await getSystemSummary(userId);
       setSummary(data);
+      setError(null);
     } catch (err) {
-      setError('Failed to load dashboard data: ' + err.message);
+      console.error('Dashboard error:', err);
+      setError('Failed to load dashboard data: ' + (err.message || 'Unknown error'));
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleRetry = () => {
+    setRetryCount(prev => prev + 1);
   };
 
   const getSetupSteps = () => {
@@ -124,13 +135,27 @@ const Dashboard = () => {
 
   return (
     <Box>
-      <Typography variant="h5" component="h2" gutterBottom>
-        Voice AI Dashboard
-      </Typography>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Typography variant="h5" component="h2">
+          Voice AI Dashboard
+        </Typography>
+        <Button 
+          startIcon={<RefreshIcon />} 
+          onClick={handleRetry} 
+          disabled={loading}
+        >
+          Refresh
+        </Button>
+      </Box>
       
       {error && (
         <Alert severity="error" sx={{ mb: 2 }}>
           {error}
+          {error.includes('completed_at') && (
+            <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+              There appears to be a database schema issue. Please contact your administrator.
+            </Typography>
+          )}
         </Alert>
       )}
       
@@ -264,7 +289,9 @@ const Dashboard = () => {
                   
                   {summary.recentCalls.length === 0 ? (
                     <Typography variant="body2" color="textSecondary" sx={{ p: 2, textAlign: 'center' }}>
-                      No recent calls. Configure your Twilio number to receive calls.
+                      {error 
+                        ? 'Call data temporarily unavailable. Please try refreshing.'
+                        : 'No recent calls. Configure your Twilio number to receive calls.'}
                     </Typography>
                   ) : (
                     <List>
@@ -346,4 +373,6 @@ const Dashboard = () => {
       )}
     </Box>
   );
-};export default Dashboard;
+};
+
+export default Dashboard;
