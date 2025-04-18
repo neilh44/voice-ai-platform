@@ -1,38 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { Link as RouterLink } from 'react-router-dom';
-import {
-  Box,
-  Card,
-  CardContent,
-  CardActionArea,
-  Grid,
-  Typography,
-  Button,
-  Divider,
-  Paper,
-  List,
-  ListItem,
-  ListItemIcon,
-  ListItemText,
-  ListItemSecondaryAction,
-  IconButton,
-  Chip,
-  Alert,
-  CircularProgress
-} from '@mui/material';
-import {
-  Phone as PhoneIcon,
-  Settings as SettingsIcon,
-  Description as FileIcon,
-  Code as CodeIcon,
-  Event as EventIcon,
-  CallMade as CallMadeIcon,
-  CallReceived as CallReceivedIcon,
-  TrendingUp as TrendingUpIcon,
-  CloudUpload as UploadIcon,
-  BarChart as ChartIcon,
-  Refresh as RefreshIcon
-} from '@mui/icons-material';
+import { Link } from 'react-router-dom';
+import AppLayout from './AppLayout';
+
+// Shadcn UI components
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "./ui/card";
+import { Button } from "./ui/button";
+import { Alert, AlertDescription } from "./ui/alert";
+import { Badge } from "./ui/badge";
+
+// Lucide icons
+import { 
+  Phone, 
+  Settings, 
+  FileText, 
+  Code, 
+  Calendar, 
+  ArrowUpRight, 
+  ArrowDownRight, 
+  Upload, 
+  RefreshCw,
+  XCircle
+} from "lucide-react";
+
+// API service remains the same
 import { getSystemSummary } from '../services/api';
 
 const Dashboard = () => {
@@ -87,7 +77,7 @@ const Dashboard = () => {
         label: 'Configure Twilio',
         description: 'Set up your Twilio account to handle phone calls',
         path: '/config',
-        icon: <PhoneIcon />
+        icon: <Phone className="h-5 w-5" />
       });
     }
     
@@ -96,7 +86,7 @@ const Dashboard = () => {
         label: 'Configure LLM',
         description: 'Connect an AI language model provider',
         path: '/config',
-        icon: <CodeIcon />
+        icon: <Code className="h-5 w-5" />
       });
     }
     
@@ -105,7 +95,7 @@ const Dashboard = () => {
         label: 'Configure Deepgram',
         description: 'Set up speech-to-text and text-to-speech',
         path: '/config',
-        icon: <SettingsIcon />
+        icon: <Settings className="h-5 w-5" />
       });
     }
     
@@ -114,7 +104,7 @@ const Dashboard = () => {
         label: 'Add Knowledge Base',
         description: 'Upload documents for your AI to reference',
         path: '/knowledge',
-        icon: <UploadIcon />
+        icon: <Upload className="h-5 w-5" />
       });
     }
     
@@ -123,7 +113,7 @@ const Dashboard = () => {
         label: 'Create a Script',
         description: 'Define how your AI assistant will interact',
         path: '/scripts',
-        icon: <FileIcon />
+        icon: <FileText className="h-5 w-5" />
       });
     }
     
@@ -134,244 +124,226 @@ const Dashboard = () => {
   const isSetupComplete = setupSteps.length === 0;
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-        <Typography variant="h5" component="h2">
-          Voice AI Dashboard
-        </Typography>
-        <Button 
-          startIcon={<RefreshIcon />} 
-          onClick={handleRetry} 
-          disabled={loading}
-        >
-          Refresh
-        </Button>
-      </Box>
-      
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {error}
-          {error.includes('completed_at') && (
-            <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-              There appears to be a database schema issue. Please contact your administrator.
-            </Typography>
-          )}
-        </Alert>
-      )}
-      
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', p: 5 }}>
-          <CircularProgress />
-        </Box>
-      ) : (
-        <>
-          {/* Setup Status */}
-          {!isSetupComplete && (
-            <Card sx={{ mb: 4 }}>
-              <CardContent>
-                <Typography variant="h6" gutterBottom>
-                  Complete Your Setup
-                </Typography>
-                <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-                  Complete these steps to fully set up your Voice AI platform
-                </Typography>
-                
-                <List>
-                  {setupSteps.map((step, index) => (
-                    <ListItem 
-                      key={index} 
-                      button 
-                      component={RouterLink} 
-                      to={step.path}
-                      sx={{ borderRadius: 1, mb: 1 }}
-                    >
-                      <ListItemIcon>
-                        {step.icon}
-                      </ListItemIcon>
-                      <ListItemText 
-                        primary={step.label} 
-                        secondary={step.description} 
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              </CardContent>
-            </Card>
-          )}
-          
-          {/* Stats Overview */}
-          <Grid container spacing={3} sx={{ mb: 4 }}>
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
+    <AppLayout>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-3xl font-bold tracking-tight">Voice AI Dashboard</h2>
+          <Button 
+            variant="outline" 
+            onClick={handleRetry} 
+            disabled={loading}
+            className="flex items-center gap-2"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Refresh
+          </Button>
+        </div>
+        
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>
+              {error}
+              {error.includes('completed_at') && (
+                <p className="text-xs mt-1">
+                  There appears to be a database schema issue. Please contact your administrator.
+                </p>
+              )}
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        {loading ? (
+          <div className="flex justify-center items-center p-12">
+            <div className="animate-spin">
+              <RefreshCw className="h-8 w-8 text-muted-foreground" />
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Setup Status */}
+            {!isSetupComplete && (
+              <Card className="mb-6">
+                <CardHeader>
+                  <CardTitle>Complete Your Setup</CardTitle>
+                  <CardDescription>
+                    Complete these steps to fully set up your Voice AI platform
+                  </CardDescription>
+                </CardHeader>
                 <CardContent>
-                  <Typography variant="subtitle2" color="textSecondary" gutterBottom>
-                    Calls Today
-                  </Typography>
-                  <Typography variant="h4">
-                    {summary.callsToday}
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                    <CallReceivedIcon fontSize="small" color="primary" />
-                    <Typography variant="caption" color="textSecondary" sx={{ ml: 1 }}>
-                      {summary.callsThisMonth} this month
-                    </Typography>
-                  </Box>
+                  <div className="space-y-2">
+                    {setupSteps.map((step, index) => (
+                      <Link 
+                        key={index} 
+                        to={step.path}
+                        className="block"
+                      >
+                        <div className="flex items-start p-3 rounded-md hover:bg-muted transition-colors">
+                          <div className="mr-4 mt-0.5 text-primary">
+                            {step.icon}
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-medium">{step.label}</h3>
+                            <p className="text-sm text-muted-foreground">{step.description}</p>
+                          </div>
+                          <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
                 </CardContent>
               </Card>
-            </Grid>
+            )}
             
-            <Grid item xs={12} sm={6} md={3}>
+            {/* Stats Overview */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-6">
               <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Calls Today</CardTitle>
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
                 <CardContent>
-                  <Typography variant="subtitle2" color="textSecondary" gutterBottom>
-                    Appointments Today
-                  </Typography>
-                  <Typography variant="h4">
-                    {summary.appointmentsToday}
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                    <EventIcon fontSize="small" color="primary" />
-                    <Typography variant="caption" color="textSecondary" sx={{ ml: 1 }}>
-                      {summary.upcomingAppointments} upcoming
-                    </Typography>
-                  </Box>
+                  <div className="text-2xl font-bold">{summary.callsToday}</div>
+                  <div className="flex items-center text-xs text-muted-foreground mt-1">
+                    <ArrowDownRight className="h-4 w-4 mr-1 text-primary" />
+                    <span>{summary.callsThisMonth} this month</span>
+                  </div>
                 </CardContent>
               </Card>
-            </Grid>
+              
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Appointments Today</CardTitle>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{summary.appointmentsToday}</div>
+                  <div className="flex items-center text-xs text-muted-foreground mt-1">
+                    <Calendar className="h-4 w-4 mr-1 text-primary" />
+                    <span>{summary.upcomingAppointments} upcoming</span>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Knowledge Bases</CardTitle>
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{summary.knowledgeBaseCount}</div>
+                  <div className="flex items-center text-xs text-muted-foreground mt-1">
+                    <FileText className="h-4 w-4 mr-1 text-primary" />
+                    <span>{summary.knowledgeBaseCount > 0 ? 'AI ready' : 'Add documents'}</span>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">AI Scripts</CardTitle>
+                  <Code className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{summary.scriptCount}</div>
+                  <div className="flex items-center text-xs text-muted-foreground mt-1">
+                    <Code className="h-4 w-4 mr-1 text-primary" />
+                    <span>{summary.scriptCount > 0 ? 'Interaction defined' : 'Create a script'}</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
             
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
+            {/* Recent Activity */}
+            <div className="grid gap-4 md:grid-cols-2">
+              <Card className="col-span-1">
+                <CardHeader>
+                  <CardTitle>Recent Calls</CardTitle>
+                </CardHeader>
                 <CardContent>
-                  <Typography variant="subtitle2" color="textSecondary" gutterBottom>
-                    Knowledge Bases
-                  </Typography>
-                  <Typography variant="h4">
-                    {summary.knowledgeBaseCount}
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                    <FileIcon fontSize="small" color="primary" />
-                    <Typography variant="caption" color="textSecondary" sx={{ ml: 1 }}>
-                      {summary.knowledgeBaseCount > 0 ? 'AI ready' : 'Add documents'}
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-            
-            <Grid item xs={12} sm={6} md={3}>
-              <Card>
-                <CardContent>
-                  <Typography variant="subtitle2" color="textSecondary" gutterBottom>
-                    AI Scripts
-                  </Typography>
-                  <Typography variant="h4">
-                    {summary.scriptCount}
-                  </Typography>
-                  <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                    <CodeIcon fontSize="small" color="primary" />
-                    <Typography variant="caption" color="textSecondary" sx={{ ml: 1 }}>
-                      {summary.scriptCount > 0 ? 'Interaction defined' : 'Create a script'}
-                    </Typography>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-          
-          {/* Recent Activity */}
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Recent Calls
-                  </Typography>
-                  
                   {summary.recentCalls.length === 0 ? (
-                    <Typography variant="body2" color="textSecondary" sx={{ p: 2, textAlign: 'center' }}>
-                      {error 
-                        ? 'Call data temporarily unavailable. Please try refreshing.'
-                        : 'No recent calls. Configure your Twilio number to receive calls.'}
-                    </Typography>
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <Phone className="h-8 w-8 text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        {error 
+                          ? 'Call data temporarily unavailable. Please try refreshing.'
+                          : 'No recent calls. Configure your Twilio number to receive calls.'}
+                      </p>
+                    </div>
                   ) : (
-                    <List>
+                    <div className="space-y-4">
                       {summary.recentCalls.map((call) => (
-                        <ListItem key={call.id}>
-                          <ListItemIcon>
-                            <PhoneIcon color={call.outcome === 'completed' ? 'success' : 'error'} />
-                          </ListItemIcon>
-                          <ListItemText
-                            primary={call.fromNumber}
-                            secondary={`${call.duration}s • ${new Date(call.startedAt).toLocaleString()}`}
-                          />
-                          <ListItemSecondaryAction>
-                            <Chip 
-                              size="small" 
-                              label={call.outcome} 
-                              color={call.outcome === 'completed' ? 'success' : 'error'}
-                            />
-                          </ListItemSecondaryAction>
-                        </ListItem>
+                        <div key={call.id} className="flex items-center">
+                          <div className="mr-4">
+                            <Phone className={`h-5 w-5 ${call.outcome === 'completed' ? 'text-green-500' : 'text-red-500'}`} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{call.fromNumber}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {`${call.duration}s • ${new Date(call.startedAt).toLocaleString()}`}
+                            </p>
+                          </div>
+                          <Badge variant={call.outcome === 'completed' ? 'outline' : 'destructive'} className="ml-2">
+                            {call.outcome}
+                          </Badge>
+                        </div>
                       ))}
-                    </List>
+                    </div>
                   )}
-                  
-                  <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
-                    <Button 
-                      component={RouterLink} 
-                      to="/call-logs"
-                      color="primary"
-                    >
+                </CardContent>
+                <CardFooter className="flex justify-center">
+                  <Button variant="ghost" asChild>
+                    <Link to="/call-logs" className="flex items-center">
                       View All Calls
-                    </Button>
-                  </Box>
-                </CardContent>
+                      <ArrowUpRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </CardFooter>
               </Card>
-            </Grid>
-            
-            <Grid item xs={12} md={6}>
-              <Card>
+              
+              <Card className="col-span-1">
+                <CardHeader>
+                  <CardTitle>Upcoming Appointments</CardTitle>
+                </CardHeader>
                 <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Upcoming Appointments
-                  </Typography>
-                  
                   {summary.recentAppointments.length === 0 ? (
-                    <Typography variant="body2" color="textSecondary" sx={{ p: 2, textAlign: 'center' }}>
-                      No upcoming appointments. Schedule some or wait for calls.
-                    </Typography>
+                    <div className="flex flex-col items-center justify-center py-8 text-center">
+                      <Calendar className="h-8 w-8 text-muted-foreground mb-2" />
+                      <p className="text-sm text-muted-foreground">
+                        No upcoming appointments. Schedule some or wait for calls.
+                      </p>
+                    </div>
                   ) : (
-                    <List>
+                    <div className="space-y-4">
                       {summary.recentAppointments.map((appointment) => (
-                        <ListItem key={appointment.id}>
-                          <ListItemIcon>
-                            <EventIcon color="primary" />
-                          </ListItemIcon>
-                          <ListItemText
-                            primary={appointment.customerName}
-                            secondary={`${appointment.appointmentDate} at ${appointment.appointmentTime}`}
-                          />
-                        </ListItem>
+                        <div key={appointment.id} className="flex items-center">
+                          <div className="mr-4">
+                            <Calendar className="h-5 w-5 text-primary" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{appointment.customerName}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {`${appointment.appointmentDate} at ${appointment.appointmentTime}`}
+                            </p>
+                          </div>
+                        </div>
                       ))}
-                    </List>
+                    </div>
                   )}
-                  
-                  <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
-                    <Button 
-                      component={RouterLink} 
-                      to="/appointments"
-                      color="primary"
-                    >
-                      Manage Appointments
-                    </Button>
-                  </Box>
                 </CardContent>
+                <CardFooter className="flex justify-center">
+                  <Button variant="ghost" asChild>
+                    <Link to="/appointments" className="flex items-center">
+                      Manage Appointments
+                      <ArrowUpRight className="ml-2 h-4 w-4" />
+                    </Link>
+                  </Button>
+                </CardFooter>
               </Card>
-            </Grid>
-          </Grid>
-        </>
-      )}
-    </Box>
+            </div>
+          </>
+        )}
+      </div>
+    </AppLayout>
   );
 };
 

@@ -1,45 +1,32 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  TextField,
-  Button,
-  Grid,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  IconButton,
-  Alert,
-  CircularProgress,
-  Chip,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem
-} from '@mui/material';
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Card, CardContent } from "./ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "./ui/table";
+import { Alert, AlertDescription } from "./ui/alert";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "./ui/popover";
+import { Calendar } from "./ui/calendar";
+import { Label } from "./ui/label";
+import { Textarea } from "./ui/textarea";
+import { Separator } from "./ui/separator";
+import { cn } from "../lib/utils";
+import { Link } from 'react-router-dom';
 import { 
-  Add as AddIcon,
-  Edit as EditIcon,
-  Delete as DeleteIcon,
-  Phone as PhoneIcon,
-  Event as EventIcon,
-  FilterList as FilterIcon,
-  Refresh as RefreshIcon
-} from '@mui/icons-material';
-import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import { TimePicker } from '@mui/x-date-pickers/TimePicker';
+  CalendarIcon, 
+  PlusCircle, 
+  Trash2, 
+  Phone, 
+  RefreshCw, 
+  FilterX, 
+  Clock,
+  Home,
+  FileText,
+  FileCode,
+  Settings,
+  LogOut,
+  ChevronRight
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { getAppointments, createAppointment, deleteAppointment } from '../services/api';
 
@@ -48,7 +35,7 @@ const Appointments = () => {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
-  const [userId, setUserId] = useState(() => localStorage.getItem('user_id') || '');
+  const [userId] = useState(() => localStorage.getItem('user_id') || '');
   const [appointments, setAppointments] = useState([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [filterDate, setFilterDate] = useState(null);
@@ -58,13 +45,13 @@ const Appointments = () => {
     customerName: '',
     customerPhone: '',
     appointmentDate: null,
-    appointmentTime: null,
+    appointmentTime: '',
     notes: ''
   });
 
   useEffect(() => {
     fetchAppointments();
-  }, [userId]);
+  }, []);
 
   const fetchAppointments = async () => {
     if (!userId) return;
@@ -73,6 +60,7 @@ const Appointments = () => {
     try {
       const data = await getAppointments(userId);
       setAppointments(data);
+      setError(null);
     } catch (err) {
       setError('Failed to load appointments: ' + err.message);
     } finally {
@@ -88,33 +76,18 @@ const Appointments = () => {
     });
   };
 
-  const handleDateChange = (date) => {
-    setFormData({
-      ...formData,
-      appointmentDate: date
-    });
-  };
-
-  const handleTimeChange = (time) => {
-    setFormData({
-      ...formData,
-      appointmentTime: time
-    });
-  };
-
-  const handleDialogOpen = () => {
-    setDialogOpen(true);
-  };
-
-  const handleDialogClose = () => {
-    setDialogOpen(false);
-    setFormData({
-      customerName: '',
-      customerPhone: '',
-      appointmentDate: null,
-      appointmentTime: null,
-      notes: ''
-    });
+  const handleDialogOpenChange = (open) => {
+    setDialogOpen(open);
+    if (!open) {
+      // Reset form when dialog closes
+      setFormData({
+        customerName: '',
+        customerPhone: '',
+        appointmentDate: null,
+        appointmentTime: '',
+        notes: ''
+      });
+    }
   };
 
   const handleSaveAppointment = async () => {
@@ -138,13 +111,13 @@ const Appointments = () => {
         customerName: formData.customerName,
         customerPhone: formData.customerPhone,
         appointmentDate: format(formData.appointmentDate, 'yyyy-MM-dd'),
-        appointmentTime: format(formData.appointmentTime, 'HH:mm'),
+        appointmentTime: formData.appointmentTime,
         notes: formData.notes
       });
       
       setSuccess('Appointment created successfully!');
       fetchAppointments(); // Refresh the list
-      handleDialogClose();
+      handleDialogOpenChange(false);
     } catch (err) {
       setError('Failed to create appointment: ' + err.message);
     } finally {
@@ -171,183 +144,333 @@ const Appointments = () => {
     : appointments;
 
   return (
-    <LocalizationProvider dateAdapter={AdapterDateFns}>
-      <Box>
-        <Typography variant="h5" component="h2" gutterBottom>
-          Appointment Management
-        </Typography>
+    <div className="flex h-screen bg-gray-50">
+      {/* Sidebar Navigation */}
+      <div className="w-64 bg-white border-r border-gray-200">
+        <div className="p-4 border-b border-gray-200">
+          <h1 className="text-xl font-bold">Voice AI Platform</h1>
+        </div>
+
+        <nav className="mt-5">
+          <ul>
+            <li>
+              <Link to="/dashboard" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
+                <Home className="h-5 w-5 mr-3" />
+                <span>Dashboard</span>
+              </Link>
+            </li>
+            
+            <li>
+              <Link to="/call-management" className="flex items-center justify-between px-4 py-3 bg-gray-100 text-blue-600 font-medium">
+                <div className="flex items-center">
+                  <Phone className="h-5 w-5 mr-3" />
+                  <span>Call Management</span>
+                </div>
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            </li>
+            
+            <li>
+              <Link to="/knowledge" className="flex items-center justify-between px-4 py-3 text-gray-600 hover:bg-gray-100">
+                <div className="flex items-center">
+                  <FileText className="h-5 w-5 mr-3" />
+                  <span>Knowledge</span>
+                </div>
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            </li>
+            
+            <li>
+              <Link to="/scripts" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
+                <FileCode className="h-5 w-5 mr-3" />
+                <span>Scripts</span>
+              </Link>
+            </li>
+            
+            <li>
+              <Link to="/configuration" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
+                <Settings className="h-5 w-5 mr-3" />
+                <span>Configuration</span>
+              </Link>
+            </li>
+          </ul>
+        </nav>
         
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <DatePicker
-              label="Filter by Date"
-              value={filterDate}
-              onChange={(date) => setFilterDate(date)}
-              renderInput={(params) => <TextField {...params} size="small" sx={{ width: 200 }} />}
-            />
-            <Button 
-              startIcon={<FilterIcon />} 
-              onClick={() => setFilterDate(null)} 
-              sx={{ ml: 1 }}
-              disabled={!filterDate}
-            >
-              Clear Filter
-            </Button>
-          </Box>
+        <div className="absolute bottom-0 w-64 border-t border-gray-200">
+          <div className="p-4 flex items-center">
+            <div className="h-8 w-8 rounded-full bg-gray-800 flex items-center justify-center text-white mr-3">
+              A
+            </div>
+            <div>
+              <p className="font-medium">Admin User</p>
+              <p className="text-xs text-gray-500">Administrator</p>
+            </div>
+          </div>
           
-          <Box>
-            <Button 
-              startIcon={<RefreshIcon />} 
-              onClick={fetchAppointments} 
+          <Link to="/logout" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100 border-t border-gray-200">
+            <LogOut className="h-5 w-5 mr-3" />
+            <span>Logout</span>
+          </Link>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-auto">
+        <div className="p-6">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold">Appointment Management</h1>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={fetchAppointments}
               disabled={loading}
-              sx={{ mr: 1 }}
+              className="flex items-center"
             >
+              <RefreshCw className="mr-2 h-4 w-4" />
               Refresh
             </Button>
-            <Button
-              variant="contained"
-              color="primary"
-              startIcon={<AddIcon />}
-              onClick={handleDialogOpen}
-            >
-              New Appointment
-            </Button>
-          </Box>
-        </Box>
-        
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        )}
-        
-        {success && (
-          <Alert severity="success" sx={{ mb: 2 }}>
-            {success}
-          </Alert>
-        )}
-        
-        <Card>
-          <CardContent>
-            {loading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-                <CircularProgress />
-              </Box>
-            ) : appointments.length === 0 ? (
-              <Box sx={{ p: 3, textAlign: 'center' }}>
-                <Typography variant="body1" color="textSecondary">
-                  No appointments found. Create your first appointment or receive calls to schedule them.
-                </Typography>
-              </Box>
-            ) : (
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Customer</TableCell>
-                      <TableCell>Phone</TableCell>
-                      <TableCell>Date</TableCell>
-                      <TableCell>Time</TableCell>
-                      <TableCell>Notes</TableCell>
-                      <TableCell align="right">Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {filteredAppointments.map((appointment) => (
-                      <TableRow key={appointment.id}>
-                        <TableCell>{appointment.customerName}</TableCell>
-                        <TableCell>
-                          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                            <PhoneIcon fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
-                            {appointment.customerPhone}
-                          </Box>
-                        </TableCell>
-                        <TableCell>{appointment.appointmentDate}</TableCell>
-                        <TableCell>{appointment.appointmentTime}</TableCell>
-                        <TableCell>{appointment.notes}</TableCell>
-                        <TableCell align="right">
-                          <IconButton size="small" onClick={() => handleDeleteAppointment(appointment.id)}>
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </CardContent>
-        </Card>
-        
-        {/* New Appointment Dialog */}
-        <Dialog open={dialogOpen} onClose={handleDialogClose} maxWidth="sm" fullWidth>
-          <DialogTitle>Schedule New Appointment</DialogTitle>
-          <DialogContent>
-            <Grid container spacing={2} sx={{ mt: 1 }}>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Customer Name"
-                  name="customerName"
-                  value={formData.customerName}
-                  onChange={handleInputChange}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Phone Number"
-                  name="customerPhone"
-                  value={formData.customerPhone}
-                  onChange={handleInputChange}
-                  placeholder="+1234567890"
-                  required
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <DatePicker
-                  label="Appointment Date"
-                  value={formData.appointmentDate}
-                  onChange={handleDateChange}
-                  renderInput={(params) => <TextField {...params} fullWidth required />}
-                />
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <TimePicker
-                  label="Appointment Time"
-                  value={formData.appointmentTime}
-                  onChange={handleTimeChange}
-                  renderInput={(params) => <TextField {...params} fullWidth required />}
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Notes"
-                  name="notes"
-                  value={formData.notes}
-                  onChange={handleInputChange}
-                  multiline
-                  rows={3}
-                />
-              </Grid>
-            </Grid>
-          </DialogContent>
-          <DialogActions>
-            <Button onClick={handleDialogClose}>Cancel</Button>
-            <Button 
-              onClick={handleSaveAppointment} 
-              variant="contained" 
-              color="primary"
-              disabled={saving}
-            >
-              {saving ? <CircularProgress size={24} /> : 'Save Appointment'}
-            </Button>
-          </DialogActions>
-        </Dialog>
-      </Box>
-    </LocalizationProvider>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {/* Appointment Form */}
+            <div className="md:col-span-1">
+              <Card>
+                <CardContent className="pt-6">
+                  <h3 className="text-lg font-semibold mb-4">Schedule Appointment</h3>
+                  
+                  <div className="mb-4">
+                    <Label htmlFor="customerName">Customer Name</Label>
+                    <Input
+                      id="customerName"
+                      name="customerName"
+                      value={formData.customerName}
+                      onChange={handleInputChange}
+                      placeholder="John Doe"
+                      className="w-full mt-1"
+                    />
+                  </div>
+                  
+                  <div className="mb-4">
+                    <Label htmlFor="customerPhone">Phone Number</Label>
+                    <Input
+                      id="customerPhone"
+                      name="customerPhone"
+                      value={formData.customerPhone}
+                      onChange={handleInputChange}
+                      placeholder="+1234567890"
+                      className="w-full mt-1"
+                    />
+                  </div>
+                  
+                  <div className="mb-4">
+                    <Label>Appointment Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          className={cn(
+                            "w-full mt-1 justify-start text-left font-normal",
+                            !formData.appointmentDate && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="h-4 w-4 mr-2" />
+                          {formData.appointmentDate ? (
+                            format(formData.appointmentDate, "PPP")
+                          ) : (
+                            <span>Pick a date</span>
+                          )}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={formData.appointmentDate}
+                          onSelect={(date) => setFormData({
+                            ...formData,
+                            appointmentDate: date
+                          })}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  
+                  <div className="mb-4">
+                    <Label htmlFor="appointmentTime">Appointment Time</Label>
+                    <Input
+                      id="appointmentTime"
+                      name="appointmentTime"
+                      type="time"
+                      value={formData.appointmentTime}
+                      onChange={handleInputChange}
+                      className="w-full mt-1"
+                    />
+                  </div>
+                  
+                  <div className="mb-4">
+                    <Label htmlFor="notes">Notes</Label>
+                    <Textarea
+                      id="notes"
+                      name="notes"
+                      value={formData.notes}
+                      onChange={handleInputChange}
+                      placeholder="Any additional notes about the appointment"
+                      rows={3}
+                      className="w-full mt-1"
+                    />
+                  </div>
+                  
+                  <Button
+                    className="w-full mt-2 bg-gray-600 hover:bg-gray-700"
+                    variant="default"
+                    onClick={handleSaveAppointment}
+                    disabled={saving}
+                  >
+                    {saving ? (
+                      <div className="flex items-center">
+                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </div>
+                    ) : (
+                      <div className="flex items-center">
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Schedule Appointment
+                      </div>
+                    )}
+                  </Button>
+                  
+                  {error && (
+                    <Alert variant="destructive" className="mt-4">
+                      <AlertDescription>{error}</AlertDescription>
+                    </Alert>
+                  )}
+                  
+                  {success && (
+                    <Alert className="mt-4 bg-green-50 text-green-800 border-green-200">
+                      <AlertDescription>{success}</AlertDescription>
+                    </Alert>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+            
+            {/* Appointments List */}
+            <div className="md:col-span-2">
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold">All Appointments</h3>
+                    
+                    <div className="flex items-center gap-2">
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" className="flex items-center">
+                            <CalendarIcon className="h-4 w-4 mr-2" />
+                            {filterDate ? (
+                              format(filterDate, "PPP")
+                            ) : (
+                              <span>Filter by date</span>
+                            )}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0">
+                          <Calendar
+                            mode="single"
+                            selected={filterDate}
+                            onSelect={setFilterDate}
+                            initialFocus
+                          />
+                        </PopoverContent>
+                      </Popover>
+                      
+                      {filterDate && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => setFilterDate(null)}
+                        >
+                          <FilterX className="h-4 w-4 mr-2" />
+                          Clear
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <Separator className="my-2" />
+                  
+                  {loading ? (
+                    <div className="flex justify-center py-8">
+                      <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
+                    </div>
+                  ) : appointments.length === 0 ? (
+                    <div className="py-8 text-center">
+                      <CalendarIcon className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                      <p className="text-gray-500">
+                        No appointments found. Create your first appointment or receive calls to schedule them.
+                      </p>
+                    </div>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Customer</TableHead>
+                          <TableHead>Phone</TableHead>
+                          <TableHead>Date</TableHead>
+                          <TableHead>Time</TableHead>
+                          <TableHead>Notes</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredAppointments.map((appointment) => (
+                          <TableRow key={appointment.id}>
+                            <TableCell className="font-medium">{appointment.customerName}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Phone className="h-4 w-4 mr-2 text-muted-foreground" />
+                                {appointment.customerPhone}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <CalendarIcon className="h-4 w-4 mr-2 text-muted-foreground" />
+                                {appointment.appointmentDate}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center">
+                                <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                                {appointment.appointmentTime}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              {appointment.notes ? (
+                                appointment.notes
+                              ) : (
+                                <span className="text-muted-foreground text-sm italic">No notes</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteAppointment(appointment.id)}
+                              >
+                                <Trash2 className="h-4 w-4 text-red-500" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 
