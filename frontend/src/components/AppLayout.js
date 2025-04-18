@@ -15,7 +15,20 @@ const AppLayout = ({ children }) => {
   const location = useLocation();
 
   const handleNavigation = (path) => {
+    // For logout, you might want to clear any auth data before navigating
+    if (path === '/logout') {
+      localStorage.removeItem('isAuthenticated');
+      // Any other auth cleanup
+    }
     navigate(path);
+  };
+
+  // Helper function to check if current path starts with a specific route
+  const isPathActive = (path) => {
+    if (path === '/') {
+      return location.pathname === '/';
+    }
+    return location.pathname.startsWith(path);
   };
 
   return (
@@ -41,7 +54,7 @@ const AppLayout = ({ children }) => {
             <li>
               <button 
                 onClick={() => handleNavigation('/call-management')} 
-                className={`flex items-center justify-between px-4 py-3 w-full text-left ${location.pathname === '/call-management' ? 'bg-gray-100 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-100'}`}
+                className={`flex items-center justify-between px-4 py-3 w-full text-left ${isPathActive('/call-management') ? 'bg-gray-100 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-100'}`}
               >
                 <div className="flex items-center">
                   <Phone className="h-5 w-5 mr-3" />
@@ -72,7 +85,7 @@ const AppLayout = ({ children }) => {
             <li>
               <button 
                 onClick={() => handleNavigation('/knowledge')} 
-                className={`flex items-center justify-between px-4 py-3 w-full text-left ${location.pathname === '/knowledge' ? 'bg-gray-100 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-100'}`}
+                className={`flex items-center justify-between px-4 py-3 w-full text-left ${isPathActive('/knowledge') ? 'bg-gray-100 text-blue-600 font-medium' : 'text-gray-600 hover:bg-gray-100'}`}
               >
                 <div className="flex items-center">
                   <FileText className="h-5 w-5 mr-3" />

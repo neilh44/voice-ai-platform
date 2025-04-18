@@ -19,13 +19,7 @@ import {
   Phone, 
   RefreshCw, 
   FilterX, 
-  Clock,
-  Home,
-  FileText,
-  FileCode,
-  Settings,
-  LogOut,
-  ChevronRight
+  Clock
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { getAppointments, createAppointment, deleteAppointment } from '../services/api';
@@ -144,330 +138,256 @@ const Appointments = () => {
     : appointments;
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      {/* Sidebar Navigation */}
-      <div className="w-64 bg-white border-r border-gray-200">
-        <div className="p-4 border-b border-gray-200">
-          <h1 className="text-xl font-bold">Voice AI Platform</h1>
-        </div>
-
-        <nav className="mt-5">
-          <ul>
-            <li>
-              <Link to="/dashboard" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
-                <Home className="h-5 w-5 mr-3" />
-                <span>Dashboard</span>
-              </Link>
-            </li>
-            
-            <li>
-              <Link to="/call-management" className="flex items-center justify-between px-4 py-3 bg-gray-100 text-blue-600 font-medium">
-                <div className="flex items-center">
-                  <Phone className="h-5 w-5 mr-3" />
-                  <span>Call Management</span>
-                </div>
-                <ChevronRight className="h-4 w-4" />
-              </Link>
-            </li>
-            
-            <li>
-              <Link to="/knowledge" className="flex items-center justify-between px-4 py-3 text-gray-600 hover:bg-gray-100">
-                <div className="flex items-center">
-                  <FileText className="h-5 w-5 mr-3" />
-                  <span>Knowledge</span>
-                </div>
-                <ChevronRight className="h-4 w-4" />
-              </Link>
-            </li>
-            
-            <li>
-              <Link to="/scripts" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
-                <FileCode className="h-5 w-5 mr-3" />
-                <span>Scripts</span>
-              </Link>
-            </li>
-            
-            <li>
-              <Link to="/configuration" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100">
-                <Settings className="h-5 w-5 mr-3" />
-                <span>Configuration</span>
-              </Link>
-            </li>
-          </ul>
-        </nav>
-        
-        <div className="absolute bottom-0 w-64 border-t border-gray-200">
-          <div className="p-4 flex items-center">
-            <div className="h-8 w-8 rounded-full bg-gray-800 flex items-center justify-center text-white mr-3">
-              A
-            </div>
-            <div>
-              <p className="font-medium">Admin User</p>
-              <p className="text-xs text-gray-500">Administrator</p>
-            </div>
-          </div>
-          
-          <Link to="/logout" className="flex items-center px-4 py-3 text-gray-600 hover:bg-gray-100 border-t border-gray-200">
-            <LogOut className="h-5 w-5 mr-3" />
-            <span>Logout</span>
-          </Link>
-        </div>
+    <div>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Appointment Management</h1>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={fetchAppointments}
+          disabled={loading}
+          className="flex items-center"
+        >
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Refresh
+        </Button>
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-auto">
-        <div className="p-6">
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold">Appointment Management</h1>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchAppointments}
-              disabled={loading}
-              className="flex items-center"
-            >
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Refresh
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Appointment Form */}
-            <div className="md:col-span-1">
-              <Card>
-                <CardContent className="pt-6">
-                  <h3 className="text-lg font-semibold mb-4">Schedule Appointment</h3>
-                  
-                  <div className="mb-4">
-                    <Label htmlFor="customerName">Customer Name</Label>
-                    <Input
-                      id="customerName"
-                      name="customerName"
-                      value={formData.customerName}
-                      onChange={handleInputChange}
-                      placeholder="John Doe"
-                      className="w-full mt-1"
-                    />
-                  </div>
-                  
-                  <div className="mb-4">
-                    <Label htmlFor="customerPhone">Phone Number</Label>
-                    <Input
-                      id="customerPhone"
-                      name="customerPhone"
-                      value={formData.customerPhone}
-                      onChange={handleInputChange}
-                      placeholder="+1234567890"
-                      className="w-full mt-1"
-                    />
-                  </div>
-                  
-                  <div className="mb-4">
-                    <Label>Appointment Date</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          className={cn(
-                            "w-full mt-1 justify-start text-left font-normal",
-                            !formData.appointmentDate && "text-muted-foreground"
-                          )}
-                        >
-                          <CalendarIcon className="h-4 w-4 mr-2" />
-                          {formData.appointmentDate ? (
-                            format(formData.appointmentDate, "PPP")
-                          ) : (
-                            <span>Pick a date</span>
-                          )}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
-                        <Calendar
-                          mode="single"
-                          selected={formData.appointmentDate}
-                          onSelect={(date) => setFormData({
-                            ...formData,
-                            appointmentDate: date
-                          })}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  
-                  <div className="mb-4">
-                    <Label htmlFor="appointmentTime">Appointment Time</Label>
-                    <Input
-                      id="appointmentTime"
-                      name="appointmentTime"
-                      type="time"
-                      value={formData.appointmentTime}
-                      onChange={handleInputChange}
-                      className="w-full mt-1"
-                    />
-                  </div>
-                  
-                  <div className="mb-4">
-                    <Label htmlFor="notes">Notes</Label>
-                    <Textarea
-                      id="notes"
-                      name="notes"
-                      value={formData.notes}
-                      onChange={handleInputChange}
-                      placeholder="Any additional notes about the appointment"
-                      rows={3}
-                      className="w-full mt-1"
-                    />
-                  </div>
-                  
-                  <Button
-                    className="w-full mt-2 bg-gray-600 hover:bg-gray-700"
-                    variant="default"
-                    onClick={handleSaveAppointment}
-                    disabled={saving}
-                  >
-                    {saving ? (
-                      <div className="flex items-center">
-                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
-                      </div>
-                    ) : (
-                      <div className="flex items-center">
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Schedule Appointment
-                      </div>
-                    )}
-                  </Button>
-                  
-                  {error && (
-                    <Alert variant="destructive" className="mt-4">
-                      <AlertDescription>{error}</AlertDescription>
-                    </Alert>
-                  )}
-                  
-                  {success && (
-                    <Alert className="mt-4 bg-green-50 text-green-800 border-green-200">
-                      <AlertDescription>{success}</AlertDescription>
-                    </Alert>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-            
-            {/* Appointments List */}
-            <div className="md:col-span-2">
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold">All Appointments</h3>
-                    
-                    <div className="flex items-center gap-2">
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" className="flex items-center">
-                            <CalendarIcon className="h-4 w-4 mr-2" />
-                            {filterDate ? (
-                              format(filterDate, "PPP")
-                            ) : (
-                              <span>Filter by date</span>
-                            )}
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0">
-                          <Calendar
-                            mode="single"
-                            selected={filterDate}
-                            onSelect={setFilterDate}
-                            initialFocus
-                          />
-                        </PopoverContent>
-                      </Popover>
-                      
-                      {filterDate && (
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => setFilterDate(null)}
-                        >
-                          <FilterX className="h-4 w-4 mr-2" />
-                          Clear
-                        </Button>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Appointment Form */}
+        <div className="md:col-span-1">
+          <Card>
+            <CardContent className="pt-6">
+              <h3 className="text-lg font-semibold mb-4">Schedule Appointment</h3>
+              
+              <div className="mb-4">
+                <Label htmlFor="customerName">Customer Name</Label>
+                <Input
+                  id="customerName"
+                  name="customerName"
+                  value={formData.customerName}
+                  onChange={handleInputChange}
+                  placeholder="John Doe"
+                  className="w-full mt-1"
+                />
+              </div>
+              
+              <div className="mb-4">
+                <Label htmlFor="customerPhone">Phone Number</Label>
+                <Input
+                  id="customerPhone"
+                  name="customerPhone"
+                  value={formData.customerPhone}
+                  onChange={handleInputChange}
+                  placeholder="+1234567890"
+                  className="w-full mt-1"
+                />
+              </div>
+              
+              <div className="mb-4">
+                <Label>Appointment Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full mt-1 justify-start text-left font-normal",
+                        !formData.appointmentDate && "text-muted-foreground"
                       )}
-                    </div>
+                    >
+                      <CalendarIcon className="h-4 w-4 mr-2" />
+                      {formData.appointmentDate ? (
+                        format(formData.appointmentDate, "PPP")
+                      ) : (
+                        <span>Pick a date</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={formData.appointmentDate}
+                      onSelect={(date) => setFormData({
+                        ...formData,
+                        appointmentDate: date
+                      })}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              
+              <div className="mb-4">
+                <Label htmlFor="appointmentTime">Appointment Time</Label>
+                <Input
+                  id="appointmentTime"
+                  name="appointmentTime"
+                  type="time"
+                  value={formData.appointmentTime}
+                  onChange={handleInputChange}
+                  className="w-full mt-1"
+                />
+              </div>
+              
+              <div className="mb-4">
+                <Label htmlFor="notes">Notes</Label>
+                <Textarea
+                  id="notes"
+                  name="notes"
+                  value={formData.notes}
+                  onChange={handleInputChange}
+                  placeholder="Any additional notes about the appointment"
+                  rows={3}
+                  className="w-full mt-1"
+                />
+              </div>
+              
+              <Button
+                className="w-full mt-2 bg-gray-600 hover:bg-gray-700"
+                variant="default"
+                onClick={handleSaveAppointment}
+                disabled={saving}
+              >
+                {saving ? (
+                  <div className="flex items-center">
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
                   </div>
+                ) : (
+                  <div className="flex items-center">
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Schedule Appointment
+                  </div>
+                )}
+              </Button>
+              
+              {error && (
+                <Alert variant="destructive" className="mt-4">
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
+              
+              {success && (
+                <Alert className="mt-4 bg-green-50 text-green-800 border-green-200">
+                  <AlertDescription>{success}</AlertDescription>
+                </Alert>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+        
+        {/* Appointments List */}
+        <div className="md:col-span-2">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">All Appointments</h3>
+                
+                <div className="flex items-center gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="flex items-center">
+                        <CalendarIcon className="h-4 w-4 mr-2" />
+                        {filterDate ? (
+                          format(filterDate, "PPP")
+                        ) : (
+                          <span>Filter by date</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={filterDate}
+                        onSelect={setFilterDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
                   
-                  <Separator className="my-2" />
-                  
-                  {loading ? (
-                    <div className="flex justify-center py-8">
-                      <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
-                    </div>
-                  ) : appointments.length === 0 ? (
-                    <div className="py-8 text-center">
-                      <CalendarIcon className="h-12 w-12 mx-auto text-gray-400 mb-3" />
-                      <p className="text-gray-500">
-                        No appointments found. Create your first appointment or receive calls to schedule them.
-                      </p>
-                    </div>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Customer</TableHead>
-                          <TableHead>Phone</TableHead>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Time</TableHead>
-                          <TableHead>Notes</TableHead>
-                          <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredAppointments.map((appointment) => (
-                          <TableRow key={appointment.id}>
-                            <TableCell className="font-medium">{appointment.customerName}</TableCell>
-                            <TableCell>
-                              <div className="flex items-center">
-                                <Phone className="h-4 w-4 mr-2 text-muted-foreground" />
-                                {appointment.customerPhone}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center">
-                                <CalendarIcon className="h-4 w-4 mr-2 text-muted-foreground" />
-                                {appointment.appointmentDate}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center">
-                                <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
-                                {appointment.appointmentTime}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              {appointment.notes ? (
-                                appointment.notes
-                              ) : (
-                                <span className="text-muted-foreground text-sm italic">No notes</span>
-                              )}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteAppointment(appointment.id)}
-                              >
-                                <Trash2 className="h-4 w-4 text-red-500" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                  {filterDate && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => setFilterDate(null)}
+                    >
+                      <FilterX className="h-4 w-4 mr-2" />
+                      Clear
+                    </Button>
                   )}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
+                </div>
+              </div>
+              
+              <Separator className="my-2" />
+              
+              {loading ? (
+                <div className="flex justify-center py-8">
+                  <RefreshCw className="h-8 w-8 animate-spin text-gray-400" />
+                </div>
+              ) : appointments.length === 0 ? (
+                <div className="py-8 text-center">
+                  <CalendarIcon className="h-12 w-12 mx-auto text-gray-400 mb-3" />
+                  <p className="text-gray-500">
+                    No appointments found. Create your first appointment or receive calls to schedule them.
+                  </p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Customer</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Time</TableHead>
+                      <TableHead>Notes</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredAppointments.map((appointment) => (
+                      <TableRow key={appointment.id}>
+                        <TableCell className="font-medium">{appointment.customerName}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <Phone className="h-4 w-4 mr-2 text-muted-foreground" />
+                            {appointment.customerPhone}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <CalendarIcon className="h-4 w-4 mr-2 text-muted-foreground" />
+                            {appointment.appointmentDate}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center">
+                            <Clock className="h-4 w-4 mr-2 text-muted-foreground" />
+                            {appointment.appointmentTime}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {appointment.notes ? (
+                            appointment.notes
+                          ) : (
+                            <span className="text-muted-foreground text-sm italic">No notes</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDeleteAppointment(appointment.id)}
+                          >
+                            <Trash2 className="h-4 w-4 text-red-500" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
