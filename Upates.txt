@@ -1,0 +1,17 @@
+For initiating call from twilio to local number.
+update the latest NGROK url and run the following curl commandßß
+curl -X POST "https://c4c8-2402-3a80-4671-b63-a07b-70c0-da66-95e8.ngrok-free.app/api/calls/outbound" -H "Content-Type: application/json" -d '{"userId": "nilesh.hanotia", "toNumber": "+919925537229"}'
+
+Twilio Configuration
+A call comes in "Webhhook", 
+URL "https://c4c8-2402-3a80-4671-b63-a07b-70c0-da66-95e8.ngrok-free.app/api/webhook/call"
+HTTP: HTTP POST
+
+Primary Handler fails "Webhook"
+URL "https://c4c8-2402-3a80-4671-b63-a07b-70c0-da66-95e8.ngrok-free.app/api/webhook/fallback" 
+HTTP : HTTP POST
+
+Call status change, "https://c4c8-2402-3a80-4671-b63-a07b-70c0-da66-95e8.ngrok-free.app/api/webhook/call/status"
+HTTP : HTTP POST
+Caller name lookup : Disabled.
+

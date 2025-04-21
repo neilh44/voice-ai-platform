@@ -18,11 +18,20 @@ import {
   ArrowDownRight, 
   Upload, 
   RefreshCw,
-  XCircle
+  XCircle,
+  Clock,
+  Activity,
+  ThumbsUp,
+  MessageSquare,
+  BarChart,
+  PieChart
 } from "lucide-react";
 
-// API service remains the same
+// API service
 import { getSystemSummary } from '../services/api';
+
+// Import the analytics charts component
+import DashboardAnalytics from './DashboardAnalytics';
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
@@ -39,7 +48,17 @@ const Dashboard = () => {
     recentAppointments: [],
     twilioConfigured: false,
     llmConfigured: false,
-    deepgramConfigured: false
+    deepgramConfigured: false,
+    // New analytics data
+    averageCallDuration: 180,
+    callDurationTrend: 5,
+    conversionRate: 23,
+    appointmentsBooked: 15,
+    totalCalls: 65,
+    peakCallTime: '2-4 PM',
+    peakCallVolume: 8,
+    satisfactionRate: 92,
+    positiveRatings: 45
   });
   
   const [userId, setUserId] = useState(() => localStorage.getItem('user_id') || '');
@@ -250,6 +269,75 @@ const Dashboard = () => {
               </CardContent>
             </Card>
           </div>
+          
+          {/* Analytics Cards Section */}
+          <div className="mb-6">
+            <h3 className="text-xl font-medium mb-4">Analytics</h3>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+              {/* Average Call Duration Card */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Avg. Call Duration</CardTitle>
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{summary.averageCallDuration || '0'}s</div>
+                  <div className="flex items-center text-xs text-muted-foreground mt-1">
+                    <ArrowUpRight className="h-4 w-4 mr-1 text-green-500" />
+                    <span>{summary.callDurationTrend || '0'}% from last week</span>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Conversion Rate Card */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Conversion Rate</CardTitle>
+                  <ArrowUpRight className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{summary.conversionRate || '0'}%</div>
+                  <div className="flex items-center text-xs text-muted-foreground mt-1">
+                    <Calendar className="h-4 w-4 mr-1 text-primary" />
+                    <span>{summary.appointmentsBooked || '0'} bookings from {summary.totalCalls || '0'} calls</span>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Busy Hours Card */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Peak Call Time</CardTitle>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{summary.peakCallTime || 'N/A'}</div>
+                  <div className="flex items-center text-xs text-muted-foreground mt-1">
+                    <Activity className="h-4 w-4 mr-1 text-primary" />
+                    <span>{summary.peakCallVolume || '0'} calls during peak</span>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Customer Satisfaction Card */}
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Customer Satisfaction</CardTitle>
+                  <ThumbsUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{summary.satisfactionRate || '0'}%</div>
+                  <div className="flex items-center text-xs text-muted-foreground mt-1">
+                    <MessageSquare className="h-4 w-4 mr-1 text-primary" />
+                    <span>{summary.positiveRatings || '0'} positive ratings</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+          
+          {/* Analytics Charts */}
+          <DashboardAnalytics />
           
           {/* Recent Activity */}
           <div className="grid gap-4 md:grid-cols-2">
